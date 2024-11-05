@@ -1,3 +1,5 @@
+/* stylelint-disable selector-class-pattern */
+
 /* header and nav layout */
 header .nav-wrapper {
   background-color: var(--background-color);
@@ -18,7 +20,7 @@ header nav {
   max-width: 1248px;
   height: var(--nav-height);
   padding: 0 24px;
-  font-family: var(--body-font-family);
+  font-family: var(--type-base-font-family);
 }
 
 header nav[aria-expanded='true'] {
@@ -68,7 +70,7 @@ header nav .nav-hamburger button {
   border: 0;
   border-radius: 0;
   padding: 0;
-  background-color: var(--background-color);
+  background-color: var(--color-neutral-50);
   color: inherit;
   overflow: initial;
   text-overflow: initial;
@@ -136,12 +138,11 @@ header nav[aria-expanded='true'] .nav-hamburger-icon::after {
 }
 
 /* brand */
-header .nav-brand {
+header nav .nav-brand a {
   grid-area: brand;
   flex-basis: 128px;
-  font-size: var(--heading-font-size-s);
-  font-weight: 700;
-  line-height: 1;
+  font: var(--type-headline-1-font);
+  letter-spacing: var(--type-headline-1-letter-spacing);
 }
 
 header nav .nav-brand img {
@@ -166,7 +167,8 @@ header nav[aria-expanded='true'] .nav-sections {
 header nav .nav-sections ul {
   list-style: none;
   padding-left: 0;
-  font-size: var(--body-font-size-s);
+  font: var(--type-body-1-default-font);
+  letter-spacing: var(--type-body-1-default-letter-spacing);
 }
 
 header nav .nav-sections ul > li {
@@ -202,11 +204,11 @@ header nav .nav-sections ul > li > ul > li {
     content: '';
     display: inline-block;
     position: absolute;
-    top: 0.5em;
-    right: 2px;
+    top: 0.4rem;
+    right: 0.2rem;
     transform: rotate(135deg);
-    width: 6px;
-    height: 6px;
+    width: 0.6rem;
+    height: 0.6rem;
     border: 2px solid currentcolor;
     border-radius: 0 1px 0 0;
     border-width: 2px 2px 0 0;
@@ -241,7 +243,7 @@ header nav .nav-sections ul > li > ul > li {
     width: 200px;
     top: 150%;
     padding: 16px;
-    background-color: var(--light-color);
+    background-color: var(--color-neutral-500);
     white-space: initial;
   }
 
@@ -254,7 +256,7 @@ header nav .nav-sections ul > li > ul > li {
     height: 0;
     border-left: 8px solid transparent;
     border-right: 8px solid transparent;
-    border-bottom: 8px solid var(--light-color);
+    border-bottom: 8px solid var(--color-neutral-500);
   }
 
   header nav .nav-sections .default-content-wrapper > ul > li > ul > li {
@@ -265,4 +267,62 @@ header nav .nav-sections ul > li > ul > li {
 /* tools */
 header nav .nav-tools {
   grid-area: tools;
+  display: flex;
+  gap: 10px;
+}
+
+header nav .nav-tools > button, header nav .nav-tools .minicart-wrapper > button {
+  color: var(--color-brand-700);
+  background: transparent;
+  padding: 5px 10px;
+}
+
+header nav .nav-tools button.nav-cart-button {
+  background-image: url('../../icons/cart.svg');
+  background-repeat: no-repeat;
+  background-position: left center;
+  padding-left: 27px;
+}
+
+header nav .nav-tools button.nav-search-button {
+  font-size: 0;
+  background-image: url('../../icons/search.svg');
+  background-repeat: no-repeat;
+  background-position: center;
+  padding: 5px 15px;
+}
+
+header .nav-search-input {
+  position: absolute;
+  z-index: 99;
+  top: var(--nav-height);
+  box-shadow: var(--shape-shadow-2);
+  background: var(--color-neutral-50);
+  left: 0;
+  right: 0;
+  padding: 20px;
+}
+
+header .nav-search-input.hidden {
+  display: none;
+}
+
+header .nav-search-input input {
+  width: 100%;
+  padding: 5px;
+}
+
+header .nav-search-input .search_autocomplete .popover-container {
+  width: 100%;
+}
+
+@media (width >= 1024px) {
+  header .nav-search-input {
+    left: unset;
+    right: 20px;
+  }
+
+  header .nav-search-input input {
+    min-width: 400px;
+  }
 }

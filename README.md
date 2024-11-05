@@ -1,12 +1,9 @@
-# Kadro Edge Delivery Services Test Site
-This project is for testing EDS deployments.
-
-## Documentation
-https://experienceleague.adobe.com/developer/commerce/storefront/
+# Your Project's Title...
+Your project's description...
 
 ## Environments
-- Preview: https://main--keds--pclouse.aem.page/
-- Live: https://main--keds--pclouse.aem.live/
+- Preview: https://main--{repo}--{owner}.aem.page/
+- Live: https://main--{repo}--{owner}.aem.live/
 
 ## Installation
 
@@ -22,7 +19,8 @@ npm run lint
 
 ## Local development
 
-1. Add your Adobe Commerce SaaS configuration in the `configs.xlsx` sheet in your content repository.
-1. Install all dependencies using `npm i`.
-1. Start AEM Proxy: `npm run up` (opens your browser at `http://localhost:3000`)
+1. Create a new repository based on the `aem-boilerplate` template and add a mountpoint in the `fstab.yaml`
+1. Add the [AEM Code Sync GitHub App](https://github.com/apps/aem-code-sync) to the repository
+1. Install the [AEM CLI](https://github.com/adobe/helix-cli): `npm install -g @adobe/aem-cli`
+1. Start AEM Proxy: `aem up` (opens your browser at `http://localhost:3000`)
 1. Open the `{repo}` directory in your favorite IDE and start coding :)

@@ -171,14 +171,6 @@ export default async function decorate(block) {
     </div>`);
   document.body.querySelector('header').append(searchInput);
 
-  // const gtmNoScript = document.createRange().createContextualFragment(`
-  // <!-- Google Tag Manager (noscript) -->
-  // <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-TTW2P"
-  // height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-  // <!-- End Google Tag Manager (noscript) -->
-  // `);
-  // document.body.insertBefore(gtmNoScript,document.body.querySelector('header'));
-
   const searchButton = document.createRange().createContextualFragment('<button type="button" class="button nav-search-button">Search</button>');
   navTools.append(searchButton);
   navTools.querySelector('.nav-search-button').addEventListener('click', async () => {

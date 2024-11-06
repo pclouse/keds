@@ -1,4 +1,4 @@
-/* eslint-disable import/no-cycle, camelcase, max-classes-per-file */
+/* eslint-disable import/no-cycle, camelcase, max-classes-per-file, class-methods-use-this */
 import {
   h, Component, Fragment, render,
 } from '../preact.js';
@@ -7,7 +7,6 @@ import htm from '../htm.js';
 import { store } from './api.js';
 import { loadCSS } from '../aem.js';
 import {
-  getCart,
   removeItemFromCart,
   updateQuantityOfCartItem,
 } from './cart.js';
@@ -59,8 +58,8 @@ class ProductCard extends Component {
     url.search = '';
 
     return html`<picture>
-      <source type="image/webp" srcset="${url}?fit=bounds&height=131&width=105&bg-color=255,255,255&format=webply&optimize=medium" />
-      <img class="product-image-photo" src="${url}?fit=bounds&height=131&width=105&quality=100&bg-color=255,255,255" max-width="105" max-height="131" alt=${item.product.name} />
+      <source type="image/webp" srcset="${url}?fit=bounds&height=200&width=200&bg-color=255,255,255&format=webply&optimize=medium" />
+      <img class="product-image-photo" src="${url}?fit=bounds&height=200&width=200&quality=100&bg-color=255,255,255" alt=${item.product.name} />
     </picture>`;
   };
 
@@ -92,10 +91,10 @@ class ProductCard extends Component {
     return html`<li>
       <div class="minicart-product">
         <div class="image">
-          <a href=${`/products/${product.url_key}/${product.sku}`}>${ProductCard.renderImage(item)}</a>
+          <a href=${`/products/${product.url_key}/${product.sku.toLowerCase()}`}>${ProductCard.renderImage(item)}</a>
         </div>
         <div class="info">
-          <div class="name"><a href=${`/products/${product.url_key}/${product.sku}`} dangerouslySetInnerHTML=${{ __html: product.name }} /></div>
+          <div class="name"><a href=${`/products/${product.url_key}/${product.sku.toLowerCase()}`} dangerouslySetInnerHTML=${{ __html: product.name }} /></div>
           ${configurable_options && (html`<div class="options">
             <input type="checkbox" id="see-options-${index}" />
             <label for="see-options-${index}">See Details</label>
@@ -133,6 +132,7 @@ export class Minicart extends Component {
       style: 'currency',
       currency: 'USD',
     });
+    this.pluralizer = new Intl.PluralRules('en-US');
   }
 
   componentDidMount() {
@@ -169,20 +169,18 @@ export class Minicart extends Component {
         ${state.cart.items.map((item, index) => html`<${ProductCard} index=${index} item=${item} formatter=${this.formatter} api=${props.api} />`)}
       </ul>
       <div class="minicart-actions">
-        <button class="button" onClick=${() => { window.location.href = '/cart'; }}>Go to cart</button>
+        <button onClick=${() => { window.location.href = '/cart'; }}>Go to cart</button>
       </div>
     </div>`;
   }
 }
 
+// For now this is unused but when we're using GraphQL again (maybe) then it may be useful.
+// eslint-disable-next-line no-unused-vars
 export async function toggle(refetch = true) {
   if (!cartVisible) {
     // Load CSS
     await loadCSS('/styles/minicart.css');
-
-    if (refetch && store.getCartId()) {
-      await getCart();
-    }
   }
 
   cartVisible = !cartVisible;
@@ -193,6 +191,13 @@ export async function toggle(refetch = true) {
     updateQuantityOfCartItem,
     close: toggle,
   }} />`;
+
+  if (cartVisible) {
+    document.querySelector('.minicart-wrapper').classList.add('active');
+  } else {
+    document.querySelector('.minicart-wrapper').classList.remove('active');
+  }
+
   render(app, document.querySelector('.minicart-wrapper > div'));
 }
 

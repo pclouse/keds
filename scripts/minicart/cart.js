@@ -1,6 +1,12 @@
 /* eslint-disable import/no-cycle */
 import { store } from './api.js';
 import { performMonolithGraphQLQuery } from '../commerce.js';
+import {
+  getLoggedInFromLocalStorage,
+  isCommerceStatePristine,
+  updateMagentoCacheSections,
+} from '../storage/util.js';
+import { getCartFromLocalStorage } from './util.js';
 
 /* Queries */
 
@@ -35,6 +41,15 @@ const cartQueryFragment = `fragment cartQuery on Cart {
               }
           }
       }
+      ... on BundleCartItem {
+        bundle_options {
+            label
+            values {
+                label
+                quantity                    
+            }
+        }
+      }
       quantity
       uid
   }
@@ -54,8 +69,8 @@ const getCartQuery = `query getCart($cartId: String!) {
 }
 ${cartQueryFragment}`;
 
-const createCartMutation = `mutation createCart {
-  cartId: createEmptyCart
+const createCartMutation = `mutation createSessionCart {
+  cartId: createSessionCart
 }`;
 
 const removeItemFromCartMutation = `mutation removeItemFromCart($cartId: String!, $uid: ID!) {
@@ -98,43 +113,6 @@ export {
 };
 
 /* Methods */
-function mapCartItem(item) {
-  return {
-    id: item.uid,
-    prices: {
-      price: {
-        value: item.prices?.price?.value,
-        currency: item.prices?.price?.currency,
-      },
-    },
-    product: {
-      // TODO: productId not exposed by core GraphQL as number
-      productId: 0,
-      name: item.product?.name,
-      sku: item.product?.sku,
-    },
-    configurableOptions: item.configurable_options?.map((option) => ({
-      optionLabel: option?.option_label,
-      valueLabel: option?.value_label,
-    })),
-    quantity: item.quantity,
-  };
-}
-
-function mapCartToMSE(cart, source) {
-  return {
-    id: cart.id,
-    items: cart.items.map(mapCartItem),
-    prices: {
-      subtotalExcludingTax: {
-        value: cart.prices?.subtotal_excluding_tax?.value,
-        currency: cart.prices?.subtotal_excluding_tax?.currency,
-      },
-    },
-    totalQuantity: cart.total_quantity,
-    source,
-  };
-}
 
 const handleCartErrors = (errors) => {
   if (!errors) {
@@ -164,53 +142,96 @@ const handleCartErrors = (errors) => {
   throw new Error(errors);
 };
 
+/**
+ * Function called when waiting for the cart to return.
+ * TODO: Should be customized with selectors specific to your implementation.
+ *
+ * @returns void
+ */
 export function waitForCart() {
   const buttons = document.querySelectorAll('button.nav-cart-button, .minicart-header > .close');
+  const wrapper = document.querySelector('.minicart-wrapper');
+  wrapper?.classList.add('loading');
   buttons.forEach((button) => { button.disabled = true; });
   return () => {
+    wrapper?.classList.remove('loading');
     buttons.forEach((button) => { button.disabled = false; });
   };
 }
 
-export async function getCart() {
-  if (!store.getCartId()) {
+/**
+ * Get the session cart from commerce system and resolve localStorage / sessionStorage state drift.
+ *
+ * @param {Object | undefined} options session cart options
+ * @param {boolean | undefined} options.waitForCart should the "wait for cart" behavior be triggered
+ * @param {boolean | undefined} options.force should the "wait for cart" behavior be triggered
+ */
+export async function resolveSessionCartDrift(options) {
+  let sectionsOfInterest = ['cart', 'customer', 'side-by-side'];
+
+  // We will exit and do nothing if there is no sign of a commerce session ever existing.
+  if (isCommerceStatePristine() && !options.force) {
     return;
   }
 
-  const done = waitForCart();
-  let data;
-  let errors;
-  try {
-    ({ data, errors } = await performMonolithGraphQLQuery(
-      getCartQuery,
-      { cartId: store.getCartId() },
-      false,
-      true,
-    ));
-    handleCartErrors(errors);
-
-    data.cart.items = data.cart.items.filter((item) => item);
-    store.setCart(data.cart);
-  } catch (err) {
-    console.error('Could not fetch cart', err);
-  } finally {
-    done();
+  let done = () => {};
+  if (options.waitForCart) {
+    done = waitForCart();
   }
+
+  await updateMagentoCacheSections(sectionsOfInterest);
+
+  const loggedIn = getLoggedInFromLocalStorage();
+
+  // This section is for toggling the logged in/out icon/status in your header (if relevant)
+  // TODO: update selectors in here to match your account header
+  document.querySelectorAll('.account-contact').forEach((item) => {
+    item.classList.add(loggedIn ? 'logged-in' : 'logged-out');
+    item.classList.remove(loggedIn ? 'logged-out' : 'logged-in');
+  });
+
+  localStorage.setItem('loggedIn', loggedIn);
+
+  store.notifySubscribers();
+
+  done();
 }
 
-export async function createCart() {
-  try {
-    const { data, errors } = await performMonolithGraphQLQuery(createCartMutation, {}, false);
-    handleCartErrors(errors);
-    const { cartId } = data;
-    store.setCartId(cartId);
-    console.debug('created empty cart', cartId);
-  } catch (err) {
-    console.error('Could not create empty cart', err);
+export function updateCartFromLocalStorage(options) {
+  let done = () => {};
+  if (options.waitForCart) {
+    done = waitForCart();
   }
+
+  // Get cart representation from local storage in mage-cache-storage
+  const previousLogin = localStorage.getItem('loggedIn') === 'true';
+
+  // Get loggedin status from local storage 'customer'
+  const registeredCustomer = getLoggedInFromLocalStorage();
+
+  const storedCart = getCartFromLocalStorage();
+  if (!storedCart) {
+    // we just return here since we have no cart data, it will display the default empty cart
+    return;
+  }
+
+  // If the commerce session tells us we are logged in...
+  if (registeredCustomer === true) {
+    // Update the account section in the header to point to the customer account page
+    document.querySelectorAll('.account-contact a').forEach((item) => item.setAttribute('href', '/customer/account'));
+    localStorage.setItem('loggedIn', true);
+  } else {
+    // else we are not logged in so we'll be sure the state reflects this
+    if (previousLogin || !storedCart) {
+      store.resetCart();
+    }
+    localStorage.setItem('loggedIn', false);
+  }
+  store.notifySubscribers();
+  done();
 }
 
-export async function addToCart(sku, options, quantity, source) {
+export async function addToCart(sku, options, quantity) {
   const done = waitForCart();
   try {
     const variables = {
@@ -236,17 +257,20 @@ export async function addToCart(sku, options, quantity, source) {
     }
 
     cart.items = cart.items.filter((item) => item);
-    store.setCart(cart);
-    const mseCart = mapCartToMSE(cart, source);
 
-    // TODO: Find exact item by comparing options UIDs
-    const mseChangedItems = cart.items.filter((item) => item.product.sku === sku).map(mapCartItem);
-    window.adobeDataLayer.push((dl) => {
-      dl.push({ shoppingCartContext: mseCart });
-      dl.push({ changedProductsContext: { items: mseChangedItems } });
-      // TODO: Remove eventInfo once collector is updated
-      dl.push({ event: 'add-to-cart', eventInfo: { ...dl.getState() } });
-    });
+    // Adding a new line item to the cart incorrectly returns the total
+    // quantity so we check that and update if necessary
+    if (cart.items.length > 0) {
+      const lineItemTotalQuantity = cart.items.flatMap(
+        (item) => item.quantity,
+      ).reduce((partialSum, a) => partialSum + a, 0);
+      if (lineItemTotalQuantity !== cart.total_quantity) {
+        console.debug('Incorrect total quantity from AC, updating.');
+        cart.total_quantity = lineItemTotalQuantity;
+      }
+    }
+
+    await store.updateCart();
 
     console.debug('Added items to cart', variables, cart);
   } catch (err) {

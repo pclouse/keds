@@ -1,3 +1,6 @@
+import { addMagentoCacheListener, updateMagentoCacheSections } from '../storage/util.js';
+import { getCartFromLocalStorage, getCartIdFromLocalStorage, transformCart } from './util.js';
+
 /* eslint-disable import/no-cycle */
 class Store {
   constructor(key = Store.CART_STORE) {
@@ -5,7 +8,6 @@ class Store {
     this.key = key;
     this.cartId = null;
     this.type = 'guest';
-    this.cartId = Store.getCartId();
   }
 
   static CARTID_STORE = 'M2_VENIA_BROWSER_PERSISTENCE__cartId';
@@ -24,27 +26,6 @@ class Store {
     total_quantity: 0,
   };
 
-  static getCartId() {
-    const cartIdField = window.localStorage.getItem(Store.CARTID_STORE);
-    if (!cartIdField) {
-      return null;
-    }
-    try {
-      const parsed = JSON.parse(cartIdField);
-      return parsed.value.replaceAll('"', '');
-    } catch (err) {
-      console.error('Could not parse cartId', err);
-      return null;
-    }
-  }
-
-  static setCartId(cartId) {
-    window.localStorage.setItem(Store.CARTID_STORE, JSON.stringify({
-      value: `"${cartId}"`,
-      timeStored: Date.now(),
-    }));
-  }
-
   static getCookie(key) {
     return document.cookie
       .split(';')
@@ -58,73 +39,97 @@ class Store {
     document.cookie = `${key}=${encodeURIComponent(value)}; expires=${expires}; path=/`;
   }
 
-  setCartId(cartId) {
-    this.cartId = cartId;
-    Store.setCartId(cartId);
-    this.setCart({
-      ...this.getCart(),
-      id: cartId,
-    });
-  }
-
+  // eslint-disable-next-line class-methods-use-this
   getCartId() {
-    return this.cartId;
-  }
-
-  setCart(cart) {
-    // Only store cart with proper id
-    if (!this.cartId) {
-      return;
-    }
-    window.localStorage.setItem(`${this.key}_${this.cartId}`, JSON.stringify(cart));
-
-    this.subscribers.forEach((callback) => {
-      callback(cart);
-    });
+    return getCartIdFromLocalStorage();
   }
 
   getCart() {
-    if (!this.cartId) {
-      return Store.DEFAULT_CART;
-    }
     try {
-      const parsed = JSON.parse(window.localStorage.getItem(`${this.key}_${this.cartId}`)) || Store.DEFAULT_CART;
-      return parsed;
+      const storedCart = getCartFromLocalStorage();
+      if (storedCart) {
+        this.cartId = storedCart.data_id;
+        const parsed = transformCart(storedCart) || Store.DEFAULT_CART;
+        return parsed;
+      }
+      return Store.DEFAULT_CART;
     } catch (err) {
-      console.error('Failed to parse cart from localStore. Resetting it.');
-      window.localStorage.removeItem(`${this.key}_${this.cartId}`);
+      console.error('Failed to parse cart from localStore.');
     }
     return Store.DEFAULT_CART;
   }
 
+  async updateCart() {
+    await updateMagentoCacheSections(['cart']);
+    this.notifySubscribers();
+  }
+
+  // TODO: see if necessary
   resetCart() {
-    window.localStorage.removeItem(`${this.key}_${this.cartId}`);
     this.cartId = null;
+    this.subscribers.forEach((callback) => {
+      callback({});
+    });
   }
 
   subscribe(callback) {
     this.subscribers.push(callback);
     callback(this.getCart());
   }
+
+  notifySubscribers() {
+    this.subscribers.forEach((callback) => {
+      callback(this.getCart());
+    });
+  }
 }
 
 export const store = new Store();
 
 export const cartApi = {
-  addToCart: async (sku, options, quantity, source = 'product-detail') => {
-    const { addToCart, createCart } = await import('./cart.js');
+  addToCart: async (sku, options, quantity) => {
+    const { addToCart } = await import('./cart.js');
     const { showCart } = await import('./Minicart.js');
     if (!store.getCartId()) {
       console.debug('Cannot add item to cart, need to create a new cart first.');
-      await createCart();
+      await updateMagentoCacheSections(['cart', 'customer', 'side-by-side']);
     }
-    await addToCart(sku, options, quantity, source);
+    await addToCart(sku, options, quantity);
     showCart();
   },
   toggleCart: async () => {
     const { toggle } = await import('./Minicart.js');
-    toggle();
+    toggle().then(response => {
+      console.log(response)
+    }).catch(e =>{
+      console.log(e)
+    })
   },
+
+  /**
+   * resolve any drift between localStorage/sessionStorage and true commerce session
+   *
+   * @param {number} delay delay in milliseconds before cart is updated
+   * @param {boolean | undefined} waitForCart should the "wait for cart" loading behavior be shown
+   */
+  resolveDrift: async (delay, waitForCart) => {
+    setTimeout(async () => {
+      const { resolveSessionCartDrift } = await import('./cart.js');
+      resolveSessionCartDrift({
+        delay,
+        waitForCart,
+      });
+    }, delay || 0);
+  },
+
+  updateCartDisplay: async (waitForCart) => {
+    const { updateCartFromLocalStorage } = await import('./cart.js');
+    updateCartFromLocalStorage({ waitForCart });
+    addMagentoCacheListener(() => {
+      updateCartFromLocalStorage({ waitForCart });
+    });
+  },
+
   cartItemsQuantity: {
     watch: (callback) => {
       store.subscribe((cart) => {

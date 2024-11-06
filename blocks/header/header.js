@@ -170,14 +170,7 @@ export default async function decorate(block) {
       </form>
     </div>`);
   document.body.querySelector('header').append(searchInput);
-
-  const klevuLazyLoad = document.createRange().createContextualFragment(`<div class="nav-search-input hidden">
-  <script type="text&#x2F;javascript" defer="true"
-          onload="window.dispatchEonLoadx28;new&#x20;CustomEvent&#x28;&quot;klevu_lazy_script_loaded&quot;&#x29;&#x29;&#x3B;"
-          src="https&#x3A;&#x2F;&#x2F;js.klevu.com&#x2F;theme&#x2F;default&#x2F;v2&#x2F;quick-search-theme.lazyload.js"></script>`);
-  document.head.append(klevuLazyLoad);
-
-
+  
   const gtmNoScript = document.createRange().createContextualFragment(`
   <!-- Google Tag Manager (noscript) -->
   <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-TTW2P"
@@ -192,18 +185,6 @@ export default async function decorate(block) {
     // await import('./searchbar.js');
     document.querySelector('header .nav-search-input').classList.toggle('hidden');
   });
-
-  // var len = 0;
-  // var i = 0;
-  // var allInputs = document.getElementsByTagName('input');
-  // for (i = 0, len = allInputs.length; i < len; i++) {
-  //   if (allInputs[i].type === "text" || allInputs[i].type === "search") {
-  //     if (allInputs[i].name === "q" || allInputs[i].id === "search") {
-  //       var search_input = allInputs[i];
-  //       search_input.form.action = 'https://staging.boatoutfitters.com/search';//?q="+search_input.value;
-  //     }
-  //   }
-  // }
 
   // hamburger for mobile
   const hamburger = document.createElement('div');

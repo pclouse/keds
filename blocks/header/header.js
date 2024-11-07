@@ -162,10 +162,10 @@ export default async function decorate(block) {
     navTools.querySelector('.nav-cart-button').textContent = quantity;
   });
 
-
+  // Search
   const searchInput = document.createRange().createContextualFragment(`<div class="nav-search-input hidden">
       <form id="search_mini_form" action="/search" method="GET">
-        <input id="search" type="text" name="q" placeholder="Search" />
+        <input id="search" type="search" name="q" placeholder="Search" />
         <div id="search_autocomplete" class="search-autocomplete"></div>
       </form>
     </div>`);
@@ -174,7 +174,7 @@ export default async function decorate(block) {
   const searchButton = document.createRange().createContextualFragment('<button type="button" class="button nav-search-button">Search</button>');
   navTools.append(searchButton);
   navTools.querySelector('.nav-search-button').addEventListener('click', async () => {
-    // await import('./searchbar.js');
+    await import('./searchbar.js');
     document.querySelector('header .nav-search-input').classList.toggle('hidden');
   });
 

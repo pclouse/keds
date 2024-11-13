@@ -7,7 +7,7 @@ import htm from '../htm.js';
 import { store } from './api.js';
 import { loadCSS } from '../aem.js';
 import {
-  getCart,
+  // getCart,
   removeItemFromCart,
   updateQuantityOfCartItem,
 } from './cart.js';

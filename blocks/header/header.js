@@ -1,6 +1,7 @@
 import { cartApi } from '../../scripts/minicart/api.js';
 import { getMetadata } from '../../scripts/aem.js';
 import { loadFragment } from '../fragment/fragment.js';
+import { getNavItems } from '../../scripts/nav-items.js';
 
 // media query match that indicates mobile/tablet width
 const isDesktop = window.matchMedia('(min-width: 900px)');
@@ -135,6 +136,31 @@ export default async function decorate(block) {
 
   const navSections = nav.querySelector('.nav-sections');
   if (navSections) {
+
+    const navItemsJSON = await getNavItems('json');
+
+    const navItems = JSON.parse(navItemsJSON);
+
+    const shopLink = document.createRange().createContextualFragment(`<li class="nav-item-parent">Shop<ul></ul></li>`);
+    navSections.querySelector('ul').prepend(shopLink);
+    const shopLinkList = navSections.querySelector('.nav-item-parent > ul');
+
+    let fragment = ``;
+    for (let i = 0; i < navItems.length; i++) {
+      fragment += `<li><a href="` + navItems[i].href + `">` + navItems[i].name + `</a>`;
+      if (navItems[i].children.length) {
+        fragment += `<ul>`;
+        for (let j = 0; j < navItems[i].children.length; j++) {
+          fragment += `<li><a href="` + navItems[i].children[j].href + `">` + navItems[i].children[j].name + `</a></li>`;
+        }
+        fragment += `</ul>`;
+      }
+      fragment += `</li>`;
+    }
+
+    let completedList = document.createRange().createContextualFragment(fragment);
+    shopLinkList.append(completedList);
+
     navSections.querySelectorAll(':scope .default-content-wrapper > ul > li').forEach((navSection) => {
       if (navSection.querySelector('ul')) navSection.classList.add('nav-drop');
       navSection.addEventListener('click', () => {
